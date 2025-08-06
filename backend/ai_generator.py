@@ -1,4 +1,6 @@
 import anthropic
+import re
+import random
 from typing import List, Optional, Dict, Any
 
 class AIGenerator:
@@ -29,16 +31,113 @@ All responses must be:
 Provide only the direct answer to what was asked.
 """
     
-    def __init__(self, api_key: str, model: str):
-        self.client = anthropic.Anthropic(api_key=api_key)
+    def __init__(self, api_key: str, model: str, mock_mode: bool = False):
+        self.mock_mode = mock_mode
         self.model = model
         
-        # Pre-build base API parameters
-        self.base_params = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 800
+        # Only initialize Anthropic client if not in mock mode
+        if not mock_mode:
+            self.client = anthropic.Anthropic(api_key=api_key)
+            # Pre-build base API parameters
+            self.base_params = {
+                "model": self.model,
+                "temperature": 0,
+                "max_tokens": 800
+            }
+        
+        # Mock responses for different query patterns
+        self.mock_responses = {
+            "outline": {
+                "MCP": """# MCP: Build Rich-Context AI Apps with Anthropic Course Outline
+
+## Lesson 1: Introduction to MCP
+- Overview of Model Context Protocol
+- Setting up the development environment
+- Key concepts and terminology
+
+## Lesson 2: Basic MCP Implementation
+- Creating your first MCP server
+- Understanding client-server architecture
+- Basic communication patterns
+
+## Lesson 3: Advanced Features
+- Tool integration and custom functions
+- Resource management and optimization
+- Error handling and debugging
+
+## Lesson 4: Building Real Applications
+- Practical implementation examples
+- Integration with existing systems
+- Best practices and patterns
+
+## Lesson 5: Deployment and Scaling
+- Production deployment strategies
+- Performance optimization
+- Monitoring and maintenance""",
+                "default": """# Course Outline
+
+## Module 1: Foundations
+- Core concepts and terminology
+- Setting up the environment
+- Basic implementation patterns
+
+## Module 2: Implementation
+- Hands-on development
+- Key features and capabilities
+- Integration techniques
+
+## Module 3: Advanced Topics
+- Optimization strategies
+- Complex scenarios and solutions
+- Best practices
+
+## Module 4: Real-World Applications
+- Case studies and examples
+- Production considerations
+- Troubleshooting and maintenance"""
+            },
+            "chatbot": "Yes, several courses include chatbot implementations. The 'MCP: Build Rich-Context AI Apps with Anthropic' course covers building AI applications that can serve as intelligent chatbots. The course teaches how to create context-aware conversational systems using Anthropic's tools and the Model Context Protocol.",
+            "rag": "RAG (Retrieval-Augmented Generation) is explained in the 'Advanced Retrieval for AI with Chroma' course. RAG combines information retrieval with language generation to provide more accurate and contextual responses by first retrieving relevant information from a knowledge base, then using that information to generate informed answers.",
+            "lesson": "Lesson 5 of the MCP course covers 'Deployment and Scaling'. This lesson focuses on production deployment strategies, performance optimization techniques, and how to monitor and maintain MCP applications in real-world environments. Students learn about scaling considerations and best practices for enterprise deployment.",
+            "default": "I'm a course materials assistant running in demonstration mode. I can help you with questions about course content, outlines, and educational materials. The system has information about courses covering topics like MCP (Model Context Protocol), RAG (Retrieval-Augmented Generation), Chroma database, and Anthropic's AI tools."
         }
+        
+        # Keywords to detect query types
+        self.query_patterns = {
+            "outline": ["outline", "structure", "syllabus", "overview", "contents"],
+            "chatbot": ["chatbot", "chat bot", "conversational", "bot"],
+            "rag": ["rag", "retrieval", "augmented", "generation"],
+            "lesson": ["lesson", "module", "chapter", "section"]
+        }
+    
+    def _generate_mock_response(self, query: str, tool_manager=None) -> str:
+        """Generate a mock response based on query patterns"""
+        query_lower = query.lower()
+        
+        # Simulate tool usage for course-specific queries
+        if tool_manager and any(keyword in query_lower for keyword in ["course", "mcp", "rag", "chroma", "anthropic"]):
+            # Simulate a search tool call
+            if hasattr(tool_manager, 'execute_tool'):
+                try:
+                    # This will add mock sources to the tool manager
+                    tool_manager.execute_tool("search_courses", query=query)
+                except Exception:
+                    pass  # Ignore tool execution errors in mock mode
+        
+        # Check for query patterns and return appropriate mock response
+        for pattern_type, keywords in self.query_patterns.items():
+            if any(keyword in query_lower for keyword in keywords):
+                if pattern_type == "outline":
+                    # Check if it's specifically about MCP
+                    if "mcp" in query_lower:
+                        return self.mock_responses["outline"]["MCP"]
+                    else:
+                        return self.mock_responses["outline"]["default"]
+                else:
+                    return self.mock_responses[pattern_type]
+        
+        # Default response
+        return self.mock_responses["default"]
     
     def generate_response(self, query: str,
                          conversation_history: Optional[str] = None,
@@ -56,6 +155,10 @@ Provide only the direct answer to what was asked.
         Returns:
             Generated response as string
         """
+        
+        # Use mock response if in mock mode
+        if self.mock_mode:
+            return self._generate_mock_response(query, tool_manager)
         
         # Build system content efficiently - avoid string ops when possible
         system_content = (

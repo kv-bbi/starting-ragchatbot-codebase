@@ -23,6 +23,13 @@ class CourseSearchTool(Tool):
     def __init__(self, vector_store: VectorStore):
         self.store = vector_store
         self.last_sources = []  # Track sources from last search
+        # Mock sources for demonstration mode
+        self.mock_sources = [
+            "MCP Course - Lesson 1: Introduction",
+            "MCP Course - Lesson 5: Deployment",
+            "Advanced Retrieval Course - Module 2",
+            "Anthropic API Documentation"
+        ]
     
     def get_tool_definition(self) -> Dict[str, Any]:
         """Return Anthropic tool definition for this tool"""
@@ -85,6 +92,43 @@ class CourseSearchTool(Tool):
         # Format and return results
         return self._format_results(results)
     
+    def execute_mock(self, query: str, course_name: Optional[str] = None, lesson_number: Optional[int] = None) -> str:
+        """Execute mock search for demonstration purposes"""
+        import random
+        
+        # Set mock sources
+        self.last_sources = random.sample(self.mock_sources, min(2, len(self.mock_sources)))
+        
+        # Generate mock response based on query
+        if "outline" in query.lower() and course_name and "mcp" in course_name.lower():
+            return """**MCP Course Outline Found:**
+            
+Lesson 1: Introduction to MCP
+- Model Context Protocol overview
+- Development environment setup
+- Core concepts
+
+Lesson 5: Deployment and Scaling  
+- Production deployment strategies
+- Performance optimization
+- Monitoring and maintenance"""
+        
+        elif "lesson" in query.lower() and lesson_number == 5:
+            return """**Lesson 5: Deployment and Scaling**
+            
+This lesson covers:
+- Production deployment strategies for MCP applications
+- Performance optimization techniques
+- Monitoring and maintenance best practices
+- Enterprise scaling considerations"""
+        
+        else:
+            return f"""**Mock Search Results for: {query}**
+            
+Found relevant information about course materials. This is demonstration mode - 
+the system would normally search through actual course content to provide 
+specific answers about lessons, outlines, and course materials."""
+    
     def _format_results(self, results: SearchResults) -> str:
         """Format search results with course and lesson context"""
         formatted = []
@@ -116,8 +160,9 @@ class CourseSearchTool(Tool):
 class ToolManager:
     """Manages available tools for the AI"""
     
-    def __init__(self):
+    def __init__(self, mock_mode: bool = False):
         self.tools = {}
+        self.mock_mode = mock_mode
     
     def register_tool(self, tool: Tool):
         """Register any tool that implements the Tool interface"""
@@ -135,9 +180,26 @@ class ToolManager:
     def execute_tool(self, tool_name: str, **kwargs) -> str:
         """Execute a tool by name with given parameters"""
         if tool_name not in self.tools:
+            # Handle mock search for unregistered tools in mock mode
+            if self.mock_mode and tool_name == "search_courses":
+                return self._execute_mock_search(**kwargs)
             return f"Tool '{tool_name}' not found"
         
+        # Use mock execution if in mock mode and tool supports it
+        if self.mock_mode and hasattr(self.tools[tool_name], 'execute_mock'):
+            return self.tools[tool_name].execute_mock(**kwargs)
+        
         return self.tools[tool_name].execute(**kwargs)
+    
+    def _execute_mock_search(self, **kwargs) -> str:
+        """Execute a mock search and set mock sources"""
+        query = kwargs.get('query', 'general query')
+        # Set mock sources for any registered CourseSearchTool
+        for tool in self.tools.values():
+            if hasattr(tool, 'mock_sources'):
+                tool.last_sources = tool.mock_sources[:2]  # Use first 2 mock sources
+                break
+        return f"Mock search completed for: {query}"
     
     def get_last_sources(self) -> list:
         """Get sources from the last search operation"""

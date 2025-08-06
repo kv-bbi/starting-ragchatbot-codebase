@@ -32,6 +32,12 @@ This application is a full-stack web application that enables users to query cou
    ```bash
    ANTHROPIC_API_KEY=your_anthropic_api_key_here
    ```
+   
+   **For demonstration without API credits:**
+   ```bash
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
+   MOCK_MODE=true
+   ```
 
 ## Running the Application
 
@@ -53,4 +59,31 @@ uv run uvicorn app:app --reload --port 8000
 The application will be available at:
 - Web Interface: `http://localhost:8000`
 - API Documentation: `http://localhost:8000/docs`
+
+## Demo Mode
+
+If you encounter API credit issues or want to test the system without using Anthropic API calls, enable mock mode:
+
+1. **Add to your `.env` file:**
+   ```bash
+   MOCK_MODE=true
+   ```
+
+2. **Restart the application:**
+   ```bash
+   ./run.sh
+   ```
+
+3. **Test with demo queries:**
+   - "What is the outline of the MCP course?"
+   - "Are there any courses that include a Chatbot implementation?"
+   - "What was covered in lesson 5 of the MCP course?"
+   - "Are there any courses that explain what RAG is?"
+
+**Mock Mode Features:**
+- Bypasses Anthropic API calls completely
+- Returns realistic course-related responses
+- Includes mock sources for demonstration
+- Supports pattern-based query recognition
+- Perfect for development and testing
 
