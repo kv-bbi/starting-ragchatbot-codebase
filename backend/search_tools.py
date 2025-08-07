@@ -170,6 +170,136 @@ specific answers about lessons, outlines, and course materials."""
         
         return "\n\n".join(formatted)
 
+
+class CourseOutlineTool(Tool):
+    """Tool for getting course outlines and lesson lists"""
+    
+    def __init__(self, vector_store: VectorStore):
+        self.store = vector_store
+    
+    def get_tool_definition(self) -> Dict[str, Any]:
+        """Return Anthropic tool definition for this tool"""
+        return {
+            "name": "get_course_outline",
+            "description": "Get course outline with complete lesson list for a specific course",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "course_title": {
+                        "type": "string",
+                        "description": "Course title to get outline for (partial matches work, e.g. 'MCP', 'Introduction')"
+                    }
+                },
+                "required": ["course_title"]
+            }
+        }
+    
+    def execute(self, course_title: str) -> str:
+        """
+        Execute the course outline tool with given parameters.
+        
+        Args:
+            course_title: Course title to get outline for
+            
+        Returns:
+            Formatted course outline with lessons or error message
+        """
+        # First resolve the course title
+        resolved_title = self.store._resolve_course_name(course_title)
+        if not resolved_title:
+            return f"No course found matching '{course_title}'"
+        
+        # Get course metadata
+        try:
+            results = self.store.course_catalog.get(ids=[resolved_title])
+            if not results or not results['metadatas']:
+                return f"No course details found for '{resolved_title}'"
+            
+            metadata = results['metadatas'][0]
+            
+            # Parse lessons from JSON
+            import json
+            lessons_json = metadata.get('lessons_json')
+            if not lessons_json:
+                return f"No lesson information available for '{resolved_title}'"
+            
+            lessons = json.loads(lessons_json)
+            
+            # Format the response
+            course_link = metadata.get('course_link', '')
+            instructor = metadata.get('instructor', '')
+            
+            response = f"**{resolved_title}**\n"
+            if instructor:
+                response += f"Instructor: {instructor}\n"
+            if course_link:
+                response += f"Course Link: {course_link}\n"
+            response += f"\nLessons ({len(lessons)} total):\n"
+            
+            for lesson in lessons:
+                lesson_num = lesson.get('lesson_number', 'N/A')
+                lesson_title = lesson.get('lesson_title', 'Untitled')
+                response += f"\nLesson {lesson_num}: {lesson_title}"
+            
+            return response
+            
+        except Exception as e:
+            return f"Error retrieving course outline: {str(e)}"
+    
+    def execute_mock(self, course_title: str) -> str:
+        """Execute mock course outline for demonstration purposes"""
+        # Mock course outlines
+        mock_outlines = {
+            "mcp": {
+                "title": "MCP: Build Rich-Context AI Apps with Anthropic",
+                "instructor": "DeepLearning.AI",
+                "course_link": "https://learn.deeplearning.ai/courses/mcp",
+                "lessons": [
+                    {"lesson_number": 1, "lesson_title": "Introduction to MCP"},
+                    {"lesson_number": 2, "lesson_title": "Basic MCP Implementation"},
+                    {"lesson_number": 3, "lesson_title": "Advanced Features"},
+                    {"lesson_number": 4, "lesson_title": "Building Real Applications"},
+                    {"lesson_number": 5, "lesson_title": "Deployment and Scaling"}
+                ]
+            },
+            "retrieval": {
+                "title": "Advanced Retrieval for AI with Chroma",
+                "instructor": "DeepLearning.AI",
+                "course_link": "https://learn.deeplearning.ai/courses/advanced-retrieval",
+                "lessons": [
+                    {"lesson_number": 1, "lesson_title": "Query Expansion"},
+                    {"lesson_number": 2, "lesson_title": "Cross-encoder Reranking"},
+                    {"lesson_number": 3, "lesson_title": "Training and Utilizing Embedding Adapters"},
+                    {"lesson_number": 4, "lesson_title": "Query Expansion"}
+                ]
+            }
+        }
+        
+        # Find matching mock outline
+        course_lower = course_title.lower()
+        outline_data = None
+        
+        if "mcp" in course_lower:
+            outline_data = mock_outlines["mcp"]
+        elif "retrieval" in course_lower or "chroma" in course_lower:
+            outline_data = mock_outlines["retrieval"]
+        else:
+            return f"No course found matching '{course_title}'"
+        
+        # Format response
+        response = f"**{outline_data['title']}**\n"
+        response += f"Instructor: {outline_data['instructor']}\n"
+        response += f"Course Link: {outline_data['course_link']}\n"
+        response += f"\nLessons ({len(outline_data['lessons'])} total):\n"
+        
+        for lesson in outline_data['lessons']:
+            lesson_num = lesson['lesson_number']
+            lesson_title = lesson['lesson_title']
+            response += f"\nLesson {lesson_num}: {lesson_title}"
+        
+        return response
+
+
 class ToolManager:
     """Manages available tools for the AI"""
     
