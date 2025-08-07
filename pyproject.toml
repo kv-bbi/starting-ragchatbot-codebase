@@ -33,3 +33,27 @@ markers = [
     "integration: Integration tests",
     "api: API endpoint tests",
 ]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''

@@ -31,6 +31,25 @@ uv sync
 
 # Add new dependency
 uv add <package>
+
+# Add development dependency
+uv add <package> --dev
+```
+
+### Code Quality
+```bash
+# Format code with Black
+./format.sh
+# or
+uv run black .
+
+# Check code formatting
+./check.sh
+# or
+uv run black --check .
+
+# Check formatting and see diff
+uv run black --check --diff .
 ```
 
 ### Environment Setup
